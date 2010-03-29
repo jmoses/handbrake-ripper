@@ -16,6 +16,7 @@ opts = Trollop::options do
 	opt :audio, "Which audio track to rip", :default => 1
 	opt :preset, 'Which preset to use', :default => 'film'
 	opt :search, "Search IMDB for title details", :default => false
+	opt :pretend, "Just output the script to execute", :default => false
 end
 
 output = ARGV
@@ -75,4 +76,8 @@ cmds.each {|c| tf << c + "\n" }
 
 tf.rewind
 
-exec "sh #{tf.path}"
+if opts[:pretend]
+  exec "cat #{tf.path}"
+else
+  exec "sh #{tf.path}"
+end
