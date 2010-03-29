@@ -3,6 +3,10 @@
 require 'rubygems'
 require 'trollop'
 require 'tempfile'
+require 'hirb'
+require 'hpricot'
+require 'open-uri'
+
 
 output_path = "/mnt/MISC/Movies/"
 
@@ -11,6 +15,7 @@ opts = Trollop::options do
 	opt :subtitle, "Which subtitle to use (ie: eng)", :default => ''
 	opt :audio, "Which audio track to rip", :default => 1
 	opt :preset, 'Which preset to use', :default => 'film'
+	opt :search, "Search IMDB for title details", :default => false
 end
 
 output = ARGV
@@ -27,8 +32,21 @@ end
 
 titles = ( opts[:title] or [1] )
 
-
 filenames = output
+
+if opts[:search]
+  doc = Hpricot( open("http://www.imdb.com/find?s=all&q=#{filenames.join('+')}") {|f| f.read } )
+  
+  possible_titles = []
+  
+  if table = (doc/'#main table')[1]
+    (table/'tr').each do |row|
+      possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
+    end
+  end
+  filenames = Hirb::Menu.render possible_titles, :helper_class => false
+  
+end
 
 if filenames.size != titles.size
 	if filenames.first !~ /%title%/
