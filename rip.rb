@@ -47,6 +47,7 @@ if opts[:search]
   end
   filenames = Hirb::Menu.render possible_titles, :helper_class => false
   
+  filenames.each {|f| f.gsub!(/[:\/]/, '-') }
 end
 
 if filenames.size != titles.size
