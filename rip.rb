@@ -77,7 +77,7 @@ cmds.each {|c| tf << c + "\n" }
 tf.rewind
 
 if opts[:pretend]
-  exec "cat #{tf.path}"
+  exec "cat #{tf.path} && rm #{tf.path}"
 else
-  exec "sh #{tf.path}"
+  exec "sh #{tf.path} && rm #{tf.path}"
 end
