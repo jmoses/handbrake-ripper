@@ -136,7 +136,7 @@ end
 
 opts = Trollop::options do 
 	opt :title, "Which title to rip", :type => :integers
-	opt :subtitle, "Which subtitle to use (ie: eng)", :default => ''
+  opt :subtitle, "Which subtitle to use if the audio isn't in this language", :default => 'eng'
 	opt :audio, "Which audio track to rip", :default => 1
 	opt :preset, 'Which preset to use', :default => 'film'
   # opt :search, "Search IMDB for title details", :default => false
@@ -157,8 +157,6 @@ end
 preset = case opts[:preset]
 when 'animation'
  '-Z "Animation"'
-when 'tv'
- '-Z "Film" -b 2000 --decomb'
 else
  '-Z "Film" -b 2000'
 end
@@ -199,8 +197,8 @@ end
 
 
 
-cmd = %Q{HandBrakeCLI #{preset} -i #{opts[:device]} -m }
-manual_cmd = %Q{ -t %d -a #{opts[:audio]} #{opts[:subtitle] != '' ? "-N #{opts[:subtitle]}" : ''} -o #{output_path}/"%s.mkv"}
+cmd = %Q{HandBrakeCLI #{preset} --input #{opts[:device]} --markers --decomb --subtitle-scan --subtitle-forced --native-language #{opts[:subtitle]} }
+manual_cmd = %Q{ --title %d --audio #{opts[:audio]}  --output #{output_path}/"%s.mkv"}
 
 
 cmds = []
@@ -215,7 +213,7 @@ if opts[:auto]
   hb.scan_titles
   
   if hb.has_real_best?
-    cmds << cmd + hb.best_arguments + %Q{ -o #{output_path}/"#{filenames.first}.mkv"}
+    cmds << cmd + hb.best_arguments + %Q{ --output #{output_path}/"#{filenames.first}.mkv"}
   else
     STDERR.puts "No best title found, please run manually."
     exit 1
