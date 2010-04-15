@@ -154,7 +154,7 @@ unless output_path and File.exists?(output_path) and File.directory?(output_path
   exit 1 unless opts[:pretend]
 end
 
-preset = "-Z #{opts[:preset]}"
+preset = "-Z '#{opts[:preset]}'"
 
 titles = ( opts[:title] or [1] )
 
