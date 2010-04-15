@@ -143,7 +143,7 @@ opts = Trollop::options do
   opt :output, "Filename to output to", :type => :string
 	opt :pretend, "Just output the script to execute", :default => false
 	opt :device, "Device to use", :default => '/dev/scd0'
-	opt :output_path, "Path to output files to", :default => '/mnt/MISC/Movies/'
+	opt :output_path, "Path to output files to", :default => '/mnt/MISC'
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
 end
 
