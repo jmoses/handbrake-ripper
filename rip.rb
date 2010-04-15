@@ -138,7 +138,7 @@ opts = Trollop::options do
 	opt :title, "Which title to rip", :type => :integers
   opt :subtitle, "Which subtitle to use if the audio isn't in this language", :default => 'eng'
 	opt :audio, "Which audio track to rip", :default => 1
-	opt :preset, 'Which preset to use', :default => 'film'
+	opt :preset, 'Which preset to use', :default => 'High Quality'
   # opt :search, "Search IMDB for title details", :default => false
   opt :output, "Filename to output to", :type => :string
 	opt :pretend, "Just output the script to execute", :default => false
@@ -154,12 +154,7 @@ unless output_path and File.exists?(output_path) and File.directory?(output_path
   exit 1 unless opts[:pretend]
 end
 
-preset = case opts[:preset]
-when 'animation'
- '-Z "Animation"'
-else
- '-Z "Film" -b 2000'
-end
+preset = "-Z #{opts[:preset]}"
 
 titles = ( opts[:title] or [1] )
 
@@ -197,7 +192,7 @@ end
 
 
 
-cmd = %Q{HandBrakeCLI #{preset} --input #{opts[:device]} --markers --decomb --subtitle-scan --subtitle-forced --native-language #{opts[:subtitle]} }
+cmd = %Q{HandBrakeCLI #{preset} --input #{opts[:device]} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} }
 manual_cmd = %Q{ --title %d --audio #{opts[:audio]}  --output #{output_path}/"%s.mkv"}
 
 
