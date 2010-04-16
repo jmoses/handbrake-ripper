@@ -30,7 +30,7 @@ class HandBrake
     def best_audio
       @best_audio_obj ||= audio_tracks.detect {|t| t.format == BEST_AUDIO_FORMAT and t.subformat =~ BEST_AUDIO_SUBFORMAT and t.language == BEST_AUDIO_LANGUAGE}
       
-      if @best_audio_obj.track_id != '1'
+      if @best_audio_obj and @best_audio_obj.track_id != '1'
         STDERR.puts("Best audio track is not track 1!  Possible foreign language film detected!")
       end
       @best_audio_obj
