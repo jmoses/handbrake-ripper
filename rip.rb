@@ -132,6 +132,18 @@ class HandBrake
   end
 end
 
+def find_titles_from_imdb( title_parts )
+  doc = Hpricot( open("http://www.imdb.com/find?s=all&q=#{title_parts.join('+')}") {|f| f.read } )
+  
+  possible_titles = []
+  
+  if table = (doc/'#main table')[1]
+    (table/'tr').each do |row|
+      possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
+    end
+  end
+  possible_titles.collect {|f| f.gsub(/[:\/]/, '-') }
+end
 
 
 opts = Trollop::options do 
@@ -145,7 +157,25 @@ opts = Trollop::options do
 	opt :device, "Device to use", :default => '/dev/scd0'
 	opt :output_path, "Path to output files to", :default => '/mnt/MISC'
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
+	opt :rename, "Search for the proper movie title and year, and rename this file", :type => :string
 end
+
+if opts[:rename]
+  unless File.exists?( opts[:rename] )
+    STDERR.puts("Can't find file to rename!")
+    exit 1
+  end
+  
+  if File.basename(opts[:rename]) =~ /^([ A-Za-z0-9']+)/
+    title = Hirb::Menu.render find_titles_from_imdb([$1]), :helper_class => false
+    
+    if title
+      FileUtils.mv( opts[:rename], File.join( File.dirname(opts[:rename]), "#{title}#{File.extname(opts[:rename])}"))
+    end
+  end
+  exit 0
+end
+
 
 output_path = opts[:output_path]
 
@@ -161,25 +191,18 @@ titles = ( opts[:title] or [1] )
 filenames = []
 
 if ! opts[:output]
-  doc = Hpricot( open("http://www.imdb.com/find?s=all&q=#{ARGV.join('+')}") {|f| f.read } )
+  possible_titles = find_titles_from_imdb(ARGV)
   
-  possible_titles = []
-  
-  if table = (doc/'#main table')[1]
-    (table/'tr').each do |row|
-      possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
-    end
-  end
   if possible_titles.size == 1 and opts[:auto]
     filenames = possible_titles
   else
     filenames = Hirb::Menu.render possible_titles, :helper_class => false
   end
   
-  filenames.each {|f| f.gsub!(/[:\/]/, '-') }
 else
   filenames = ARGV
 end
+
 
 if filenames.size != titles.size
 	if filenames.first !~ /%title%/
