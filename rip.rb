@@ -9,6 +9,7 @@ require 'open-uri'
 require 'fileutils'
 require 'open3'
 
+# Make this so it knows how to rip
 class HandBrake
   class Title
     attr_accessor :title_id
@@ -75,6 +76,7 @@ class HandBrake
   
   attr_accessor :device
   attr_accessor :titles
+  attr_accessor :nodvdnav
   
   def initialize( options = {})
     options.each do |k,v|
@@ -118,7 +120,7 @@ class HandBrake
   end
   
   def base_command
-    "HandBrakeCLI -i #{device} "
+    "HandBrakeCLI -i #{device} #{nodvdnav ? '--no-dvdnav ' : ''}"
   end
   
   def best_arguments
@@ -144,6 +146,7 @@ opts = Trollop::options do
 	opt :pretend, "Just output the script to execute", :default => false
 	opt :device, "Device to use", :default => '/dev/scd0'
 	opt :output_path, "Path to output files to", :default => '/mnt/MISC'
+        opt :nodvdnav, "Don't use the libdvdnav", :default => false
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
 end
 
@@ -192,7 +195,7 @@ end
 
 
 
-cmd = %Q{HandBrakeCLI #{preset} --input #{opts[:device]} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} }
+cmd = %Q{HandBrakeCLI #{opts[:nodvdnav] ? '--no-dvdnav' : ''} #{preset} --input #{opts[:device]} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} }
 manual_cmd = %Q{ --title %d --audio #{opts[:audio]}  --output #{output_path}/"%s.mkv"}
 
 
@@ -204,7 +207,7 @@ if opts[:auto]
     exit 1
   end
   
-  hb = HandBrake.new( :device => opts[:device])
+  hb = HandBrake.new( :device => opts[:device], :nodvdnav => opts[:nodvdnav])
   hb.scan_titles
   
   if hb.has_real_best?
