@@ -200,6 +200,7 @@ opts = Trollop::options do
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
 	opt :rename, "Search for the proper movie title and year, and rename this file", :type => :string
   opt :notify, "Notify using this prowl API token after completion", :type => :string
+  opt :no_scan, "Don't scan the dvd", :default => false
 end
 
 # Growl support instead?
@@ -267,17 +268,14 @@ end
 
 cmds = []
 
-hb = HandBrake.new( :device => opts[:device])
-hb.scan_titles
+hb = HandBrake.new( :device => opts[:device], :nodvdnav => opts[:nodvdnav])
+hb.scan_titles unless opts[:no_scan]
 
 if opts[:auto]
   if filenames.size != 1
     STDERR.puts("Only one filename allowed when auto ripping.")
     exit 1
   end
-  
-  hb = HandBrake.new( :device => opts[:device], :nodvdnav => opts[:nodvdnav])
-  hb.scan_titles
   
   if hb.has_real_best?
     cmds << hb.rip_command( 
