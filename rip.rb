@@ -160,7 +160,7 @@ class HandBrake
         failed = true
       end
     end
-    raise ArgumentException.new if failed
+    raise ArgumentError.new if failed
     
     %Q{#{base_command} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} -Z "#{opts[:preset]}" --title #{opts[:title]} --audio #{opts[:audio]} --output "#{opts[:filename]}" }
   end
