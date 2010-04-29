@@ -302,7 +302,7 @@ else
   
   titles.zip(filenames).each_with_index do |(title, filename), idx|
     cmds << hb.rip_command({
-      :filename => filename.gsub('%title%', sprintf('%02d', idx + 1) ),
+      :filename => filename.gsub('%title%', sprintf('%02d', idx + 1) ) + '.mkv',
       :title => title,
       :audio => opts[:audio],
       :preset => opts[:preset],
