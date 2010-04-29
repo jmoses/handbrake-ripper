@@ -279,8 +279,6 @@ if opts[:auto]
   hb = HandBrake.new( :device => opts[:device], :nodvdnav => opts[:nodvdnav])
   hb.scan_titles
   
-=======
->>>>>>> ef82de77134a2578c5289f79f4b2831d4e860062:rip.rb
   if hb.has_real_best?
     cmds << hb.rip_command( 
       hb.best_arguments({
