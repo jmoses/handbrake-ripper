@@ -31,6 +31,11 @@ class HandBrake
     def best_audio
       @best_audio_obj ||= audio_tracks.detect {|t| t.format == BEST_AUDIO_FORMAT and t.subformat =~ BEST_AUDIO_SUBFORMAT and t.language == BEST_AUDIO_LANGUAGE}
       
+      if ! @best_audio_obj and audio_tracks.size == 1
+        STDERR.puts("No best audio, but only one audio track found, so we're using it.")
+        @best_audio_obj = audio_tracks.first
+      end
+      
       if @best_audio_obj and @best_audio_obj.track_id != '1'
         STDERR.puts("Best audio track is not track 1!  Possible foreign language film detected!")
       end
@@ -41,8 +46,11 @@ class HandBrake
       ((duration - (60 * 15))..(duration + (60 * 15)))
     end
     
-    def arguments
-      "--title #{title_id} #{best_audio.arguments}"
+    def rip_arguments( options = {})
+      options.merge({
+        :title => title_id,
+        :audio => best_audio.track_id
+      })
     end
   end
   
@@ -59,9 +67,6 @@ class HandBrake
       @subformat = subformat
     end
     
-    def arguments
-      "--audio #{track_id}"
-    end
   end
   
   class Subtitle
@@ -94,7 +99,7 @@ class HandBrake
         current_title = @titles.last
       when /\+ duration: (\d{2})\:(\d{2})\:(\d{2})/
         current_title.duration = ( $1.to_i * 3600 ) + ( $2.to_i * 60 ) + ( $3.to_i )
-      when /\+ (\d), ([a-zA-Z]+) \(([a-zA-Z0-9]+)\) \((.*?)\), \d+Hz, \d+bps/
+      when /\+ (\d), ([a-zA-Z]+) \(([a-zA-Z0-9]+)\) \((.*?)\)/ #, \d+Hz, \d+bps/
         current_title.audio_tracks << AudioTrack.new($1, $2, $3, $4)
       when /\+ (\d), ([a-zA-Z]+).*?(\(iso[\d\-]+: [a-z]+)\)/
         current_title.subtitles << Subtitle.new($1, $2)
@@ -115,6 +120,10 @@ class HandBrake
     @best_title_obj
   end
   
+  def title(title_id)
+    titles.detect {|t| t.title_id == title_id.to_s }
+  end
+  
   def has_real_best?
     best_title and best_title.best_audio
   end
@@ -123,8 +132,12 @@ class HandBrake
     "HandBrakeCLI -i #{device} #{nodvdnav ? '--no-dvdnav ' : ''}"
   end
   
-  def best_arguments
-    has_real_best? ? best_title.arguments : nil
+  def best_arguments(options = {})
+    has_real_best? ? best_title.rip_arguments(options) : nil
+  end
+  
+  def scan
+    puts handbrake("--title 0").join("\n")
   end
   
   def handbrake( commands )
@@ -132,8 +145,45 @@ class HandBrake
       stderr.readlines
     end
   end
+  
+  def rip_command( opts = {} )
+    # cmd = %Q{HandBrakeCLI #{preset} --input #{opts[:device]} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} }
+    #     manual_cmd = %Q{ --title %d --audio #{opts[:audio]}  --output #{output_path}/"%s.mkv"}
+    #     
+    opts[:title] ||= best_title.title_id if best_title
+    opts[:audio] ||= best_title.best_audio.track_id if best_title and best_title.best_audio
+
+    failed = false
+    [:title, :audio, :filename, :subtitle, :preset].each do |key|
+      unless opts[key] != ''
+        STDERR.puts("Missing required option '#{key}' for rip.")
+        failed = true
+      end
+    end
+    raise ArgumentException.new if failed
+    
+    %Q{#{base_command} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} -Z "#{opts[:preset]}" --title #{opts[:title]} --audio #{opts[:audio]} --output "#{opts[:filename]}" }
+  end
 end
 
+def find_titles_from_imdb( title_parts )
+  doc = Hpricot( open("http://www.imdb.com/find?s=all&q=#{title_parts.join('+')}") {|f| f.read } )
+  
+  possible_titles = []
+  
+  if table = (doc/'#main table')[1]
+    (table/'tr').each do |row|
+      possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
+    end
+  end
+  possible_titles.collect {|f| f.gsub(/[:\/]/, '-') }
+end
+
+def notify_script( title, api_key = nil )
+  return "" unless api_key
+  
+  return %Q{ruby -rrubygems -e 'require "prowl"; Prowl.add(:application => "HBRip", :event => "Completed", :description => "#{title} is done.", :apikey => "#{api_key}")'}
+end
 
 
 opts = Trollop::options do 
@@ -148,7 +198,36 @@ opts = Trollop::options do
 	opt :output_path, "Path to output files to", :default => '/mnt/MISC'
         opt :nodvdnav, "Don't use the libdvdnav", :default => false
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
+	opt :rename, "Search for the proper movie title and year, and rename this file", :type => :string
+  opt :notify, "Notify using this prowl API token after completion", :type => :string
 end
+
+# Growl support instead?
+if opts[:notify] or opts[:notify_internal]
+  begin
+    require 'prowl'
+  rescue LoadError
+    STDERR.puts("Error loading prowl, skipping notifications!")
+    opts[:notify] = nil
+  end
+end
+
+if opts[:rename]
+  unless File.exists?( opts[:rename] )
+    STDERR.puts("Can't find file to rename!")
+    exit 1
+  end
+  
+  if File.basename(opts[:rename]) =~ /^([ A-Za-z0-9']+)/
+    title = Hirb::Menu.render find_titles_from_imdb([$1]), :helper_class => false
+    
+    if title
+      FileUtils.mv( opts[:rename], File.join( File.dirname(opts[:rename]), "#{title}#{File.extname(opts[:rename])}"))
+    end
+  end
+  exit 0
+end
+
 
 output_path = opts[:output_path]
 
@@ -157,32 +236,23 @@ unless output_path and File.exists?(output_path) and File.directory?(output_path
   exit 1 unless opts[:pretend]
 end
 
-preset = "-Z '#{opts[:preset]}'"
-
 titles = ( opts[:title] or [1] )
 
 filenames = []
 
 if ! opts[:output]
-  doc = Hpricot( open("http://www.imdb.com/find?s=all&q=#{ARGV.join('+')}") {|f| f.read } )
+  possible_titles = find_titles_from_imdb(ARGV)
   
-  possible_titles = []
-  
-  if table = (doc/'#main table')[1]
-    (table/'tr').each do |row|
-      possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
-    end
-  end
   if possible_titles.size == 1 and opts[:auto]
     filenames = possible_titles
   else
     filenames = Hirb::Menu.render possible_titles, :helper_class => false
   end
   
-  filenames.each {|f| f.gsub!(/[:\/]/, '-') }
 else
   filenames = ARGV
 end
+
 
 if filenames.size != titles.size
 	if filenames.first !~ /%title%/
@@ -195,11 +265,10 @@ end
 
 
 
-cmd = %Q{HandBrakeCLI #{opts[:nodvdnav] ? '--no-dvdnav' : ''} #{preset} --input #{opts[:device]} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} }
-manual_cmd = %Q{ --title %d --audio #{opts[:audio]}  --output #{output_path}/"%s.mkv"}
-
-
 cmds = []
+
+hb = HandBrake.new( :device => opts[:device])
+hb.scan_titles
 
 if opts[:auto]
   if filenames.size != 1
@@ -210,25 +279,47 @@ if opts[:auto]
   hb = HandBrake.new( :device => opts[:device], :nodvdnav => opts[:nodvdnav])
   hb.scan_titles
   
+=======
+>>>>>>> ef82de77134a2578c5289f79f4b2831d4e860062:rip.rb
   if hb.has_real_best?
-    cmds << cmd + hb.best_arguments + %Q{ --output #{output_path}/"#{filenames.first}.mkv"}
+    cmds << hb.rip_command( 
+      hb.best_arguments({
+        :filename => File.join(output_path, "#{filenames.first}.mkv"),
+        :subtitle => opts[:subtitle],
+        :preset => opts[:preset]
+      }) 
+    )
+  elsif opts[:title]
+    audio = hb.title(opts[:title]).best_audio ? hb.title(opts[:title]).best_audio.track_id : opts[:audio]
+    cmds << hb.rip_command({
+        :filename => File.join(output_path, "#{filenames.first}.mkv"),
+        :subtitle => opts[:subtitle],
+        :preset => opts[:preset],
+        :title => opts[:title],
+        :audio => audio
+    }) 
   else
-    STDERR.puts "No best title found, please run manually."
+    STDERR.puts "No best title found and no title specified, please run manually."
     exit 1
   end
 else
-  titles.zip(filenames).each do |title, filename|
-  	filename = filename.gsub('%title%', sprintf('%02d', title.to_i) )
-  	cmds << sprintf(cmd + manual_cmd, title, filename)
+  
+  titles.zip(filenames).each_with_index do |(title, filename), idx|
+    cmds << hb.rip_command({
+      :filename => filename.gsub('%title%', sprintf('%02d', idx + 1) ),
+      :title => title,
+      :audio => opts[:audio],
+      :preset => opts[:preset],
+      :subtitle => opts[:subtitle]
+    })
   end
 end
 
 tf = Tempfile.new("rip")
 
 tf << "#!/bin/bash\n"
-
-cmds.each {|c| tf << c + "\n" }
-
+tf << cmds.join("\n")
+tf << "\n" + notify_script( filenames.first, opts[:notify] )
 tf.rewind
 
 if opts[:pretend]
