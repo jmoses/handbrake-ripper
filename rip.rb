@@ -162,7 +162,7 @@ class HandBrake
     end
     raise ArgumentError.new if failed
     
-    %Q{#{base_command} --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]} -Z "#{opts[:preset]}" --title #{opts[:title]} --audio #{opts[:audio]} --output "#{opts[:filename]}" }
+    %Q{#{base_command} -Z "#{opts[:preset]}" --markers --decomb --subtitle scan --subtitle-forced --native-language #{opts[:subtitle]}  --title #{opts[:title]} --audio #{opts[:audio]},#{opts[:audio]} --output "#{opts[:filename]}" }
   end
 end
 
