@@ -177,6 +177,13 @@ def find_titles_from_imdb( title_parts )
       possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
     end
   end
+
+  title = (doc/'head title').first
+
+  if title && title.inner_text !~ /imdb search/i
+    possible_titles << title.inner_text
+  end
+
   possible_titles.collect {|f| f.gsub(/[:\/]/, '-') }
 end
 
