@@ -8,6 +8,7 @@ require 'hpricot'
 require 'open-uri'
 require 'fileutils'
 require 'open3'
+require 'cgi'
 
 # Make this so it knows how to rip
 class HandBrake
@@ -255,7 +256,7 @@ else
 end
 
 
-if filenames.size != titles.size
+if filenames.size != titles.size and ! opts[:output]
 	if filenames.first !~ /%title%/
 		STDERR.puts("Mismatch between number of titles and number of filenames")
 		exit 1
@@ -296,6 +297,7 @@ if opts[:auto]
     }) 
   else
     STDERR.puts "No best title found and no title specified, please run manually."
+    puts hb.titles.inspect
     exit 1
   end
 else
