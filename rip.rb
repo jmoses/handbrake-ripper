@@ -203,7 +203,7 @@ opts = Trollop::options do
   opt :output, "Filename to output to", :type => :string
 	opt :pretend, "Just output the script to execute", :default => false
 	opt :device, "Device to use", :default => '/dev/scd0'
-	opt :output_path, "Path to output files to", :default => '/mnt/MISC'
+	opt :output_path, "Path to output files to", :default => '/mnt/media/movies/'
         opt :nodvdnav, "Don't use the libdvdnav", :default => false
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
 	opt :rename, "Search for the proper movie title and year, and rename this file", :type => :string
@@ -259,7 +259,7 @@ if ! opts[:output]
   end
   
 else
-  filenames = ARGV
+  filenames = opts[:output].split("|")
 end
 
 
