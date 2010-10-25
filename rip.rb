@@ -209,6 +209,7 @@ opts = Trollop::options do
 	opt :rename, "Search for the proper movie title and year, and rename this file", :type => :string
   opt :notify, "Notify using this prowl API token after completion", :type => :string
   opt :no_scan, "Don't scan the dvd", :default => false
+  opt :start_at, "Start at this for auto titling", :default => 1, :short => "-z"
 end
 
 # Growl support instead?
@@ -237,6 +238,9 @@ if opts[:rename]
   exit 0
 end
 
+if opts[:start_at]
+  opts[:start_at] -= 1
+end
 
 output_path = opts[:output_path]
 
@@ -263,7 +267,7 @@ else
 end
 
 
-if filenames.size != titles.size and ! opts[:output]
+if filenames.size != titles.size #and ! opts[:output]
 	if filenames.first !~ /%title%/
 		STDERR.puts("Mismatch between number of titles and number of filenames")
 		exit 1
@@ -311,7 +315,7 @@ else
   
   titles.zip(filenames).each_with_index do |(title, filename), idx|
     cmds << hb.rip_command({
-      :filename => filename.gsub('%title%', sprintf('%02d', idx + 1) ) + '.mkv',
+      :filename => filename.gsub('%title%', sprintf('%02d', idx + 1 + ( opts[:start_at] || 0 ) ) ) + '.mkv',
       :title => title,
       :audio => opts[:audio],
       :preset => opts[:preset],
