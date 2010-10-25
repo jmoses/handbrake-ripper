@@ -172,7 +172,7 @@ def find_titles_from_imdb( title_parts )
   
   possible_titles = []
   
-  if table = (doc/'#main table')[1]
+  if tables = (doc/'#main table') && table = tables[1]
     (table/'tr').each do |row|
       possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
     end
