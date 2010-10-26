@@ -9,6 +9,7 @@ require 'open-uri'
 require 'fileutils'
 require 'open3'
 require 'cgi'
+require 'json'
 
 # Make this so it knows how to rip
 class HandBrake
@@ -177,8 +178,8 @@ def find_titles_from_imdb( title_parts )
   else
     (doc/'a').each do |link|
       if link['href'] =~ /^\/title\/tt\d+/ && link.inner_text.strip != ''
-        if title = link.parent.inner_text.strip and title.match(/ \(.*?\)$/) 
-          possible_titles << title
+        if title = link.parent.inner_text.strip and match = title.match(/(^.* \(.\d+\))/) 
+          possible_titles << match[0]
         end
       end
     end
