@@ -168,23 +168,23 @@ class HandBrake
 end
 
 def find_titles_from_imdb( title_parts )
-  doc = Hpricot( open("http://www.imdb.com/find?s=all&q=#{title_parts.join('+')}") {|f| f.read } )
-  
+  doc = Hpricot( open("http://www.imdb.com/find?s=tt&q=#{title_parts.join('+')}") {|f| f.read } )
+
   possible_titles = []
   
-  if tables = (doc/'#main table') && table = tables[1]
-    (table/'tr').each do |row|
-      possible_titles << (row/'td').last.inner_text.match(/(^.*?\))/)[0]
+  if title = (doc/'.article h1.header')
+    possible_titles << title.inner_text.strip.gsub(/\n/, ' ').squeeze(' ')
+  else
+    (doc/'a').each do |link|
+      if link['href'] =~ /^\/title\/tt\d+/ && link.inner_text.strip != ''
+        if title = link.parent.inner_text.strip and title.match(/ \(.*?\)$/) 
+          possible_titles << title
+        end
+      end
     end
   end
 
-  title = (doc/'head title').first
-
-  if title && title.inner_text !~ /imdb search/i
-    possible_titles << title.inner_text
-  end
-
-  possible_titles.collect {|f| f.gsub(/[:\/]/, '-') }
+  possible_titles[0..10].collect {|t| t.gsub(/&#x\d+;/, '').gsub(/[:\/]/, '-') }
 end
 
 def notify_script( title, api_key = nil )
