@@ -172,7 +172,7 @@ def find_titles_from_imdb( title_parts )
 
   possible_titles = []
   
-  if title = (doc/'.article h1.header')
+  if title = (doc/'.article h1.header') and title.inner_html != ''
     possible_titles << title.inner_text.strip.gsub(/\n/, ' ').squeeze(' ')
   else
     (doc/'a').each do |link|
@@ -184,7 +184,7 @@ def find_titles_from_imdb( title_parts )
     end
   end
 
-  possible_titles[0..10].collect {|t| t.gsub(/&#x\d+;/, '').gsub(/[:\/]/, '-') }
+  possible_titles.reject{|x| x.nil? || x == '' }[0..10].collect {|t| t.gsub(/&#x\d+;/, '').gsub(/[:\/]/, '-') }
 end
 
 def notify_script( title, api_key = nil )
@@ -204,7 +204,7 @@ opts = Trollop::options do
 	opt :pretend, "Just output the script to execute", :default => false
 	opt :device, "Device to use", :default => '/dev/scd0'
 	opt :output_path, "Path to output files to", :default => '/mnt/media/movies/'
-        opt :nodvdnav, "Don't use the libdvdnav", :default => false
+  opt :nodvdnav, "Don't use the libdvdnav", :default => false
 	opt :auto, "Do everything automatically", :default => false, :short => "A"
 	opt :rename, "Search for the proper movie title and year, and rename this file", :type => :string
   opt :notify, "Notify using this prowl API token after completion", :type => :string
@@ -275,7 +275,6 @@ if filenames.size != titles.size #and ! opts[:output]
 		filenames = [filenames.first]*titles.size
 	end
 end
-
 
 
 cmds = []
