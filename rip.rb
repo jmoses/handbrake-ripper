@@ -179,7 +179,7 @@ def find_titles_from_imdb( title_parts )
     (doc/'a').each do |link|
       if link['href'] =~ /^\/title\/tt\d+/ && link.inner_text.strip != ''
         if title = link.parent.inner_text.strip and match = title.match(/(^.* \(.\d+\))/) 
-          possible_titles << match[0]
+          possible_titles << match[0] unless match[0] =~ /^Media from/
         end
       end
     end
